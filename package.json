@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "flutterwave-react-v3": "^1.3.3",
+    "html-to-image": "^1.11.13",
+    "lucide-react": "^1.39.0",
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8"
