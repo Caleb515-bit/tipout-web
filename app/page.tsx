@@ -3,8 +3,10 @@ import { useState, useRef } from 'react';
 import { SlidersHorizontal, ArrowRight, Clock, ShieldCheck, ArrowLeft, Trash2, Plus, Download, Check, AlertCircle, CheckCircle2, Zap } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
+import { signIn, useSession } from 'next-auth/react';
 
 export default function TipOutApp() {
+  const { data: session } = useSession();
   const [currentScreen, setCurrentScreen] = useState<'home' | 'new-split' | 'breakdown' | 'roster-weights' | 'pro'>('home');
   const [currency, setCurrency] = useState('USD');
   const [currencySymbol, setCurrencySymbol] = useState('$');
@@ -62,18 +64,18 @@ export default function TipOutApp() {
   // Flutterwave Config Hook
   const amountToCharge = selectedPlan === 'annual' ? 39.00 : 4.99; 
 
-const config = {
+  const config = {
     public_key: process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || '', 
     tx_ref: `tipout-${Date.now()}`,
     amount: amountToCharge,
     currency: currency,
     payment_options: 'card,banktransfer,ussd',
     customer: {
-      email: 'user@tipoutapp.com',
+      email: session?.user?.email || 'user@tipoutapp.com',
       phone_number: '08122767290', 
-      name: 'TipOut User',
+      name: session?.user?.name || 'TipOut User',
     },
-      customizations: {
+    customizations: {
       title: 'TipOut Pro',
       description: 'Unlock unlimited tip splits and advanced features',
       logo: 'https://raw.githubusercontent.com/Caleb515-bit/logo/main/tipout-logo.png', 
@@ -170,7 +172,7 @@ const config = {
   const handleSaveShift = () => {
     if (isSaved || !calculationResult) return;
     
-    if (savedShifts.length >= 6) {
+    if (savedShifts.length >= 6 && !session) {
       setCurrentScreen('pro');
       return;
     }
@@ -221,11 +223,11 @@ const config = {
             </div>
             <div className="flex items-center space-x-2">
               <button 
-                onClick={() => setCurrentScreen('pro')}
+                onClick={() => session ? setCurrentScreen('pro') : signIn('google')}
                 className="bg-[#C08552]/20 border border-[#C08552]/40 text-[#C08552] text-xs font-bold px-3 py-2.5 rounded-2xl flex items-center space-x-1 hover:bg-[#C08552]/30 transition"
               >
                 <Zap className="w-3.5 h-3.5 fill-[#C08552]" />
-                <span>Pro</span>
+                <span>{session ? session.user?.name?.split(' ')[0] || 'Pro' : 'Sign In'}</span>
               </button>
               <button 
                 onClick={() => setCurrentScreen('roster-weights')}
@@ -353,7 +355,7 @@ const config = {
             
             <button 
               onClick={() => {
-                if (savedRoster.length >= 6) {
+                if (savedRoster.length >= 6 && !session) {
                   setCurrentScreen('pro');
                   return;
                 }
@@ -430,7 +432,7 @@ const config = {
               Unlock Unlimited Shifts
             </h2>
             <p className="text-[#8B9099] text-sm leading-relaxed max-w-[280px]">
-              You have reached your 6 free shift limit. Upgrade to Pro to unlock unlimited splits, custom role weights, and advanced reporting.
+              You have reached your free shift limit. Upgrade to Pro to unlock unlimited splits, custom role weights, and advanced reporting.
             </p>
           </div>
 
@@ -627,7 +629,7 @@ const config = {
             <label className="text-[11px] font-bold uppercase tracking-wider text-[#8B9099]">Staff on Shift ({staffList.length})</label>
             <button 
               onClick={() => { 
-                if (staffList.length >= 6) {
+                if (staffList.length >= 6 && !session) {
                   setCurrentScreen('pro');
                   return;
                 }
