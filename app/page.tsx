@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react';
 import { SlidersHorizontal, ArrowRight, Clock, ShieldCheck, ArrowLeft, Trash2, Plus, Download, Check, AlertCircle, CheckCircle2, Zap } from 'lucide-react';
 import { toPng } from 'html-to-image';
-import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
+import { PaystackButton } from 'react-paystack';
 import { signIn, useSession } from 'next-auth/react';
 
 export default function TipOutApp() {
@@ -61,49 +61,42 @@ export default function TipOutApp() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  // Flutterwave Config Hook
-  const amountToCharge = selectedPlan === 'annual' ? 39.00 : 4.99; 
+  // Paystack Config
+  const amountToCharge = selectedPlan === 'annual' ? 3900 : 499; // Paystack expects amount in Kobo/Cents (e.g. ₦39.00 -> 3900)
 
-  const config = {
-    public_key: process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || '', 
-    tx_ref: `tipout-${Date.now()}`,
-    amount: amountToCharge,
-    currency: currency,
-    payment_options: 'card,banktransfer,ussd',
-    customer: {
-      email: session?.user?.email || 'user@tipoutapp.com',
-      phone_number: '',
-      name: session?.user?.name || 'TipOut User',
-    },
-    customizations: {
-      title: 'TipOut Pro',
-      description: 'Unlock unlimited tip splits and advanced features',
-      logo: 'https://raw.githubusercontent.com/Caleb515-bit/logo/main/tipout-logo.png', 
-    },
+  const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '';
+
+  const paystackConfig = {
+    reference: `tipout_${Date.now()}`,
+    email: session?.user?.email || 'user@tipoutapp.com',
+    amount: amountToCharge * 100, // converting to subunit
+    publicKey: paystackPublicKey,
+    metadata: {
+      custom_fields: [
+        {
+          display_name: "App",
+          variable_name: "app",
+          value: "TipOut Pro"
+        }
+      ]
+    }
   };
 
-  const handleFlutterwavePaymentModal = useFlutterwave(config);
+  const handlePaystackSuccess = (reference: { reference: string }) => {
+    console.log(reference);
+    showToast('Payment successful! TipOut Pro unlocked.');
+    setCurrentScreen('home');
+  };
 
-  const handleFlutterwavePayment = () => {
-    const publicKey = process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY;
-    console.log("Button clicked! Public key present:", !!publicKey);
+  const handlePaystackClose = () => {
+    showToast('Payment modal closed.');
+  };
 
-    if (!publicKey) {
-      showToast('Error: Public Key is missing. Check Vercel config.');
-      return;
-    }
-
-    handleFlutterwavePaymentModal({
-      callback: (response) => {
-        console.log(response);
-        showToast('Payment successful! TipOut Pro unlocked.');
-        setCurrentScreen('home');
-        closePaymentModal();
-      },
-      onClose: () => {
-        showToast('Payment modal closed.');
-      },
-    });
+  const paystackComponentProps = {
+    ...paystackConfig,
+    text: 'Continue to Payment',
+    onSuccess: (ref: any) => handlePaystackSuccess(ref),
+    onClose: handlePaystackClose,
   };
 
   const handleResetForm = () => {
@@ -459,10 +452,10 @@ export default function TipOutApp() {
                 </span>
               </div>
               <div className="flex items-baseline space-x-1.5 mb-2">
-                <span className="text-3xl font-mono font-bold text-[#5FA88F]">$39.00</span>
+                <span className="text-3xl font-mono font-bold text-[#5FA88F]">₦39,000</span>
                 <span className="text-[#8B9099] text-xs">/ year</span>
               </div>
-              <p className="text-xs text-[#8B9099]">Just $3.25 / month, billed annually.</p>
+              <p className="text-xs text-[#8B9099]">Billed annually.</p>
             </div>
 
             {/* Monthly Plan Card */}
@@ -476,7 +469,7 @@ export default function TipOutApp() {
                 <h3 className="text-sm font-bold text-[#F2ECE4]">Monthly Pass</h3>
               </div>
               <div className="flex items-baseline space-x-1.5 mb-2">
-                <span className="text-3xl font-mono font-bold text-[#5FA88F]">$4.99</span>
+                <span className="text-3xl font-mono font-bold text-[#5FA88F]">₦4,990</span>
                 <span className="text-[#8B9099] text-xs">/ month</span>
               </div>
               <p className="text-xs text-[#8B9099]">Billed monthly. Cancel anytime.</p>
@@ -485,12 +478,10 @@ export default function TipOutApp() {
 
           <div className="fixed bottom-0 left-0 right-0 p-5 bg-[#14171C]/95 backdrop-blur-md border-t border-[#2B303A] flex justify-center z-50">
             <div className="w-full max-w-md">
-              <button 
-                onClick={handleFlutterwavePayment}
-                className="w-full bg-[#C08552] text-[#14171C] font-bold py-4 rounded-2xl shadow-lg hover:opacity-95 transition tracking-wide text-sm"
-              >
-                Continue to Payment
-              </button>
+              <PaystackButton 
+                className="w-full bg-[#C08552] text-[#14171C] font-bold py-4 rounded-2xl shadow-lg hover:opacity-95 transition tracking-wide text-sm flex items-center justify-center"
+                {...paystackComponentProps}
+              />
             </div>
           </div>
         </div>
