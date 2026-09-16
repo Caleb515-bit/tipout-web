@@ -72,6 +72,7 @@ export default function TipOutApp() {
     payment_options: 'card,banktransfer,ussd',
     customer: {
       email: session?.user?.email || 'user@tipoutapp.com',
+      phone_number: '',
       name: session?.user?.name || 'TipOut User',
     },
     customizations: {
