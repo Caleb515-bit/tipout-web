@@ -2,8 +2,14 @@
 import { useState, useRef } from 'react';
 import { SlidersHorizontal, ArrowRight, Clock, ShieldCheck, ArrowLeft, Trash2, Plus, Download, Check, AlertCircle, CheckCircle2, Zap } from 'lucide-react';
 import { toPng } from 'html-to-image';
-import { PaystackButton } from 'react-paystack';
 import { signIn, useSession } from 'next-auth/react';
+import dynamic from 'next/dynamic';
+
+// Dynamically load the Paystack button with SSR disabled to prevent server-side window errors
+const PaystackButton = dynamic(
+  () => import('react-paystack').then((mod) => mod.PaystackButton),
+  { ssr: false }
+);
 
 export default function TipOutApp() {
   const { data: session } = useSession();
@@ -62,14 +68,14 @@ export default function TipOutApp() {
   };
 
   // Paystack Config
-  const amountToCharge = selectedPlan === 'annual' ? 3900 : 499; // Paystack expects amount in Kobo/Cents (e.g. ₦39.00 -> 3900)
+  const amountToCharge = selectedPlan === 'annual' ? 39000 : 4990; // Amount in Kobo (e.g., ₦39,000)
 
   const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '';
 
   const paystackConfig = {
     reference: `tipout_${Date.now()}`,
     email: session?.user?.email || 'user@tipoutapp.com',
-    amount: amountToCharge * 100, // converting to subunit
+    amount: amountToCharge,
     publicKey: paystackPublicKey,
     metadata: {
       custom_fields: [
