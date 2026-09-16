@@ -65,14 +65,13 @@ export default function TipOutApp() {
   const amountToCharge = selectedPlan === 'annual' ? 39.00 : 4.99; 
 
   const config = {
-    public_key:'FLWSECK-354fde762dfdfe9626ccae310bd1b315-1a0aa732324vt-X',
+    public_key: process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || '', 
     tx_ref: `tipout-${Date.now()}`,
     amount: amountToCharge,
     currency: currency,
     payment_options: 'card,banktransfer,ussd',
     customer: {
       email: session?.user?.email || 'user@tipoutapp.com',
-      phone_number: '08122767290', 
       name: session?.user?.name || 'TipOut User',
     },
     customizations: {
