@@ -85,6 +85,14 @@ export default function TipOutApp() {
   const handleFlutterwavePaymentModal = useFlutterwave(config);
 
   const handleFlutterwavePayment = () => {
+    const publicKey = process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY;
+    console.log("Button clicked! Public key present:", !!publicKey);
+
+    if (!publicKey) {
+      showToast('Error: Public Key is missing. Check Vercel config.');
+      return;
+    }
+
     handleFlutterwavePaymentModal({
       callback: (response) => {
         console.log(response);
