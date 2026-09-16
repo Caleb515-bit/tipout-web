@@ -65,7 +65,7 @@ export default function TipOutApp() {
   const amountToCharge = selectedPlan === 'annual' ? 39.00 : 4.99; 
 
   const config = {
-    public_key: process.env.NEXT_PUBLIC_FLUTTERWAVE_KEY || '',
+    public_key:'FLWSECK-354fde762dfdfe9626ccae310bd1b315-1a0aa732324vt-X',
     tx_ref: `tipout-${Date.now()}`,
     amount: amountToCharge,
     currency: currency,
