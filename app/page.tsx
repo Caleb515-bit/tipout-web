@@ -68,14 +68,15 @@ export default function TipOutApp() {
   };
 
   // Paystack Config
-  const amountToCharge = selectedPlan === 'annual' ? 39000 : 4990; // Amount in Kobo (e.g., ₦39,000)
+  const amountToCharge = selectedPlan === 'annual' ? 39.00 : 4.99; // Base amount in Dollars
 
   const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '';
 
   const paystackConfig = {
     reference: `tipout_${Date.now()}`,
     email: session?.user?.email || 'user@tipoutapp.com',
-    amount: amountToCharge,
+    amount: Math.round(amountToCharge * 100), // Converted to subunits properly (e.g., 4.99 * 100 = 499)
+    currency: 'NGN', // Processes securely through your active Nigerian Paystack merchant profile
     publicKey: paystackPublicKey,
     metadata: {
       custom_fields: [
@@ -458,10 +459,10 @@ export default function TipOutApp() {
                 </span>
               </div>
               <div className="flex items-baseline space-x-1.5 mb-2">
-                <span className="text-3xl font-mono font-bold text-[#5FA88F]">₦39,000</span>
+                <span className="text-3xl font-mono font-bold text-[#5FA88F]">$39.00</span>
                 <span className="text-[#8B9099] text-xs">/ year</span>
               </div>
-              <p className="text-xs text-[#8B9099]">Billed annually.</p>
+              <p className="text-xs text-[#8B9099]">Just $3.25 / month, billed annually.</p>
             </div>
 
             {/* Monthly Plan Card */}
@@ -475,7 +476,7 @@ export default function TipOutApp() {
                 <h3 className="text-sm font-bold text-[#F2ECE4]">Monthly Pass</h3>
               </div>
               <div className="flex items-baseline space-x-1.5 mb-2">
-                <span className="text-3xl font-mono font-bold text-[#5FA88F]">₦4,990</span>
+                <span className="text-3xl font-mono font-bold text-[#5FA88F]">$4.99</span>
                 <span className="text-[#8B9099] text-xs">/ month</span>
               </div>
               <p className="text-xs text-[#8B9099]">Billed monthly. Cancel anytime.</p>
