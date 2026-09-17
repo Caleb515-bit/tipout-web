@@ -77,7 +77,7 @@ export default function TipOutApp() {
     customer: {
       email: session?.user?.email || 'user@tipoutapp.com',
       name: session?.user?.name || 'TipOut User',
-      phone_number: '08000000000',
+      phone_number: '',
     },
     customizations: {
       title: 'TipOut Pro',
