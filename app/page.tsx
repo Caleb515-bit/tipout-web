@@ -64,20 +64,20 @@ export default function TipOutApp() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  // Flutterwave Config
-  const amountToCharge = selectedPlan === 'annual' ? 39000 : 4990; 
+  // Flutterwave Config (Using USD pricing and satisfying type parameters)
+  const amountToCharge = selectedPlan === 'annual' ? 39.00 : 4.99; 
   const publicKey = process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || '';
 
   const flutterwaveConfig = {
     public_key: publicKey,
     tx_ref: `tipout_${Date.now()}`,
     amount: amountToCharge,
-    currency: 'NGN', 
-    payment_options: 'card,banktransfer,ussd',
+    currency: 'USD', 
+    payment_options: 'card',
     customer: {
       email: session?.user?.email || 'user@tipoutapp.com',
       name: session?.user?.name || 'TipOut User',
-      phone_number: '',
+      phone_number: '08000000000',
     },
     customizations: {
       title: 'TipOut Pro',
