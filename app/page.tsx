@@ -3,13 +3,7 @@ import { useState, useRef } from 'react';
 import { SlidersHorizontal, ArrowRight, Clock, ShieldCheck, ArrowLeft, Trash2, Plus, Download, Check, AlertCircle, CheckCircle2, Zap } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { signIn, useSession } from 'next-auth/react';
-import dynamic from 'next/dynamic';
-
-// Dynamically load the Paystack button with SSR disabled to prevent server-side window errors
-const PaystackButton = dynamic(
-  () => import('react-paystack').then((mod) => mod.PaystackButton),
-  { ssr: false }
-);
+import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
 
 export default function TipOutApp() {
   const { data: session } = useSession();
@@ -20,6 +14,9 @@ export default function TipOutApp() {
   const [splitMethod, setSplitMethod] = useState('Role × Hours');
   const [errorMessage, setErrorMessage] = useState('');
   const [toastMessage, setToastMessage] = useState('');
+  
+  // Soft cloud reassurance modal state for checkout
+  const [showSoftCloudModal, setShowSoftCloudModal] = useState(false);
   
   // Pro Screen State
   const [selectedPlan, setSelectedPlan] = useState<'annual' | 'monthly'>('annual');
@@ -67,44 +64,45 @@ export default function TipOutApp() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  // Paystack Config
-  
- // Pro plan price in Dollars (Base amount)
-  // Map your USD value to the equivalent Naira charge in kobo subunits
-  // (e.g., charging roughly equivalent Naira value or your target NGN rate for the tier)
-  const amountToCharge = selectedPlan === 'annual' ? 39000 * 100 : 4990 * 100; 
-  const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '';
+  // Flutterwave Config
+  const amountToCharge = selectedPlan === 'annual' ? 39000 : 4990; 
+  const publicKey = process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || '';
 
-  const paystackConfig = {
-    reference: `tipout_${Date.now()}`,
-    email: session?.user?.email || 'user@tipoutapp.com',
-    amount: amountToCharge, // Processes cleanly under your active NGN merchant setup
-    publicKey: publicKey,
-    metadata: {
-      custom_fields: [
-        {
-          display_name: "App",
-          variable_name: "app",
-          value: "TipOut Pro"
-        }
-      ]
-    }
-  };
-  const handlePaystackSuccess = (reference: { reference: string }) => {
-    console.log(reference);
-    showToast('Payment successful! TipOut Pro unlocked.');
-    setCurrentScreen('home');
+  const flutterwaveConfig = {
+    public_key: publicKey,
+    tx_ref: `tipout_${Date.now()}`,
+    amount: amountToCharge,
+    currency: 'NGN', 
+    payment_options: 'card,banktransfer,ussd',
+    customer: {
+      email: session?.user?.email || 'user@tipoutapp.com',
+      name: session?.user?.name || 'TipOut User',
+      phone_number: '',
+    },
+    customizations: {
+      title: 'TipOut Pro',
+      description: selectedPlan === 'annual' ? 'Annual Unlimited Pass' : 'Monthly Unlimited Pass',
+      logo: 'https://tipout-web.vercel.app/favicon.ico',
+    },
   };
 
-  const handlePaystackClose = () => {
-    showToast('Payment modal closed.');
-  };
+  const handleFlutterwavePayment = useFlutterwave(flutterwaveConfig);
 
-  const paystackComponentProps = {
-    ...paystackConfig,
-    text: 'Continue to Payment',
-    onSuccess: (ref: any) => handlePaystackSuccess(ref),
-    onClose: handlePaystackClose,
+  const triggerCheckout = () => {
+    setShowSoftCloudModal(true);
+    handleFlutterwavePayment({
+      callback: (response) => {
+        console.log(response);
+        setShowSoftCloudModal(false);
+        showToast('Payment successful! TipOut Pro unlocked.');
+        setCurrentScreen('home');
+        closePaymentModal();
+      },
+      onClose: () => {
+        setShowSoftCloudModal(false);
+        showToast('Payment modal closed.');
+      },
+    });
   };
 
   const handleResetForm = () => {
@@ -486,12 +484,50 @@ export default function TipOutApp() {
 
           <div className="fixed bottom-0 left-0 right-0 p-5 bg-[#14171C]/95 backdrop-blur-md border-t border-[#2B303A] flex justify-center z-50">
             <div className="w-full max-w-md">
-              <PaystackButton 
-                className="w-full bg-[#C08552] text-[#14171C] font-bold py-4 rounded-2xl shadow-lg hover:opacity-95 transition tracking-wide text-sm flex items-center justify-center"
-                {...paystackComponentProps}
-              />
+              <button 
+                onClick={triggerCheckout}
+                className="w-full bg-[#C08552] text-[#14171C] font-bold py-4 rounded-2xl shadow-lg hover:opacity-95 transition tracking-wide text-sm flex items-center justify-center cursor-pointer"
+              >
+                Continue to Payment (${selectedPlan === 'annual' ? '39.00' : '4.99'})
+              </button>
             </div>
           </div>
+
+          {/* Soft Cloud Psychology Modal */}
+          {showSoftCloudModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-all duration-300">
+              <div 
+                className="w-full max-w-md p-8 rounded-3xl shadow-2xl text-center border border-white/40 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                style={{
+                  background: 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)',
+                  boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8)'
+                }}
+              >
+                {/* Soft decorative glow representing calm cloud aesthetic */}
+                <div className="absolute -top-12 -right-12 w-32 h-32 bg-blue-100 rounded-full blur-2xl opacity-60 pointer-events-none"></div>
+                <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-amber-100 rounded-full blur-2xl opacity-60 pointer-events-none"></div>
+
+                <div className="relative z-10">
+                  <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-white/80 shadow-sm flex items-center justify-center text-xl">
+                    🤍
+                  </div>
+                  
+                  <h3 className="text-lg font-semibold text-slate-800 tracking-tight mb-2">
+                    Thanks for choosing TipOut
+                  </h3>
+                  
+                  <p className="text-sm text-slate-600 leading-relaxed font-normal mb-6">
+                    Your subscription is being processed securely — see you back in the app!
+                  </p>
+
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 border border-slate-200/60 text-xs text-slate-500 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Encrypted & Secure Gateway
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
