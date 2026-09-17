@@ -68,15 +68,15 @@ export default function TipOutApp() {
   };
 
   // Paystack Config
-  const amountToCharge = selectedPlan === 'annual' ? 39.00 : 4.99; // Base amount in Dollars
+  const amountToCharge = selectedPlan === 'annual' ? 39.00 : 4.99; 
 
   const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '';
 
   const paystackConfig = {
     reference: `tipout_${Date.now()}`,
     email: session?.user?.email || 'user@tipoutapp.com',
-    amount: Math.round(amountToCharge * 100), // Converted to subunits properly (e.g., 4.99 * 100 = 499)
-    currency: 'NGN', // Processes securely through your active Nigerian Paystack merchant profile
+    amount: Math.round(amountToCharge * 100), // Converts to cents (e.g., 4.99 * 100 = 499)
+    currency: 'USD', // Processes in USD for your international/tech market
     publicKey: paystackPublicKey,
     metadata: {
       custom_fields: [
