@@ -68,7 +68,8 @@ export default function TipOutApp() {
   };
 
   // Paystack Config
-  const amountToCharge = selectedPlan === 'annual' ? 39000 : 4990; // Price mapped cleanly in Naira subunits
+  
+ const amountToCharge = selectedPlan === 'annual' ? 39000 * 100 : 4990 * 100; // Price mapped cleanly in Naira subunits
   const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '';
 
   const paystackConfig = {
