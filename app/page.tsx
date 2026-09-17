@@ -70,14 +70,15 @@ export default function TipOutApp() {
   // Paystack Config
   
  // Pro plan price in Dollars (Base amount)
-  const amountInDollars = selectedPlan === 'annual' ? 39.00 : 4.99; 
+  // Map your USD value to the equivalent Naira charge in kobo subunits
+  // (e.g., charging roughly equivalent Naira value or your target NGN rate for the tier)
+  const amountToCharge = selectedPlan === 'annual' ? 39000 * 100 : 4990 * 100; 
   const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '';
 
   const paystackConfig = {
     reference: `tipout_${Date.now()}`,
     email: session?.user?.email || 'user@tipoutapp.com',
-    amount: Math.round(amountInDollars * 100), // Converts dollars to cents (e.g., 39.00 * 100 = 3900)
-    currency: 'USD', // Forces Paystack popup to display and bill in USD
+    amount: amountToCharge, // Processes cleanly under your active NGN merchant setup
     publicKey: publicKey,
     metadata: {
       custom_fields: [
