@@ -13,7 +13,13 @@ export async function POST(req: Request) {
       console.warn('Unauthorized webhook attempt detected.');
       return NextResponse.json({ status: 'error', message: 'Unauthorized' }, { status: 401 });
     }
+console.log('Received signature:', signature);
+    console.log('Expected secret hash length:', secretHash ? secretHash.length : 'undefined');
 
+    if (!signature || signature !== secretHash) {
+      console.warn('Unauthorized webhook attempt detected. Signature mismatch.');
+      return NextResponse.json({ status: 'error', message: 'Unauthorized' }, { status: 401 });
+    }
     const event = await req.json();
 
     // 2. Handle successful charge event
