@@ -89,7 +89,7 @@ export default function TipOutApp() {
     amount: amountToCharge,
     currency: 'USD', 
     payment_options: 'card',
-    redirect_url: `${window.location.origin}/?payment=success`,
+   redirect_url: `${typeof window !== 'undefined' ? window.location.origin : 'https://tipout-web.vercel.app'}/?payment=success`,
     customer: {
       email: session?.user?.email || 'user@tipoutapp.com',
       name: session?.user?.name || 'TipOut User',
