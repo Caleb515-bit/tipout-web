@@ -38,19 +38,25 @@ const handler = NextAuth({
         return true; // Let them sign in even if DB sync fails temporarily
       }
     },
-    async jwt({ token, user }) {
-      // If user just logged in, fetch their Pro status from Neon
+    async jwt({ token }) {
+      // Fetch Pro status and expiration date from Neon
       if (token.email) {
         try {
           const client = await pool.connect();
           const result = await client.query(
-            'SELECT "isPro" FROM "User" WHERE email = $1',
+            'SELECT "isPro", "proExpiresAt" FROM "User" WHERE email = $1',
             [token.email]
           );
           client.release();
 
           if (result.rows.length > 0) {
-            token.isPro = result.rows[0].isPro;
+            const userRecord = result.rows[0];
+            const now = new Date();
+            const expiresAt = userRecord.proExpiresAt ? new Date(userRecord.proExpiresAt) : null;
+
+            // User is truly Pro only if flagged as true AND expiration date is still in the future
+            const activePro = Boolean(userRecord.isPro && expiresAt && expiresAt > now);
+            token.isPro = activePro;
           }
         } catch (error) {
           console.error("Error fetching pro status for JWT:", error);
@@ -59,7 +65,7 @@ const handler = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      // Expose isPro to the client-side useSession() hook
+      // Expose active isPro status to the client-side useSession() hook
       if (session.user) {
         (session.user as any).isPro = token.isPro || false;
       }
