@@ -4,10 +4,21 @@ import { SlidersHorizontal, ArrowRight, Clock, ShieldCheck, ArrowLeft, Trash2, P
 import { toPng } from 'html-to-image';
 import { signIn, useSession } from 'next-auth/react';
 import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
+import { useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export default function TipOutApp() {
   const { data: session, update } = useSession();
   const isPro = (session?.user as any)?.isPro || false;
+  const searchParams = useSearchParams();
+
+useEffect(() => {
+  if (searchParams.get('payment') === 'success') {
+    update(); // Refreshes the NextAuth session token
+    showToast('Payment successful! TipOut Pro unlocked.');
+    setCurrentScreen('home');
+  }
+}, [searchParams]);
 
   const [currentScreen, setCurrentScreen] = useState<'home' | 'new-split' | 'breakdown' | 'roster-weights' | 'pro'>('home');
   const [currency, setCurrency] = useState('USD');
@@ -76,6 +87,7 @@ export default function TipOutApp() {
     amount: amountToCharge,
     currency: 'USD', 
     payment_options: 'card',
+    redirect_url: `${window.location.origin}/dashboard?payment=success`, // <-- Add this line
     customer: {
       email: session?.user?.email || 'user@tipoutapp.com',
       name: session?.user?.name || 'TipOut User',
