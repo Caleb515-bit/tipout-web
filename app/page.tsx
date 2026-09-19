@@ -10,15 +10,17 @@ import { useSearchParams } from 'next/navigation';
 export default function TipOutApp() {
   const { data: session, update } = useSession();
   const isPro = (session?.user as any)?.isPro || false;
+  function PaymentHandler({ onPaymentSuccess }: { onPaymentSuccess: () => void }) {
   const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    if (searchParams.get('payment') === 'success') {
+      onPaymentSuccess();
+    }
+  }, [searchParams]);
 
-useEffect(() => {
-  if (searchParams.get('payment') === 'success') {
-    update(); // Refreshes the NextAuth session token
-    showToast('Payment successful! TipOut Pro unlocked.');
-    setCurrentScreen('home');
-  }
-}, [searchParams]);
+  return null;
+}
 
   const [currentScreen, setCurrentScreen] = useState<'home' | 'new-split' | 'breakdown' | 'roster-weights' | 'pro'>('home');
   const [currency, setCurrency] = useState('USD');
