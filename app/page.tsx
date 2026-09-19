@@ -114,7 +114,6 @@ export default function TipOutApp() {
         console.log(response);
         if (response.status === 'successful') {
           try {
-            // Instantly ping your newly created upgrade route for immediate UI/DB sync
             await fetch('/api/user/upgrade', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -125,7 +124,7 @@ export default function TipOutApp() {
           }
         }
         setShowSoftCloudModal(false);
-        await update(); // Refreshes session token from Neon database
+        await update(); 
         showToast('Payment successful! TipOut Pro unlocked.');
         setCurrentScreen('home');
         closePaymentModal();
@@ -259,6 +258,23 @@ export default function TipOutApp() {
           </div>
         )}
 
+        {/* Expiry Warning Banner */}
+        {isPro && session?.user && (session.user as any).proExpiresAt && (
+          (() => {
+            const expires = new Date((session.user as any).proExpiresAt);
+            const daysLeft = Math.ceil((expires.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            if (daysLeft <= 3 && daysLeft >= 0) {
+              return (
+                <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 text-amber-400 text-xs flex items-center justify-between">
+                  <span>⚠️ Your Pro pass expires in {daysLeft} {daysLeft === 1 ? 'day' : 'days'}.</span>
+                  <button onClick={() => setCurrentScreen('pro')} className="font-bold underline">Renew</button>
+                </div>
+              );
+            }
+            return null;
+          })()
+        )}
+
         {/* HOME SCREEN */}
         {currentScreen === 'home' && (
           <>
@@ -297,7 +313,9 @@ export default function TipOutApp() {
 
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#8B9099]">Recent Shifts</h3>
-              <span className="text-xs font-semibold text-[#C08552] cursor-pointer">View All ({savedShifts.length}/6)</span>
+              <span className="text-xs font-semibold text-[#C08552]">
+                {isPro ? 'Unlimited History' : `View All (${savedShifts.length}/6)`}
+              </span>
             </div>
 
             {savedShifts.length === 0 ? (
