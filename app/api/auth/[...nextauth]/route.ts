@@ -2,7 +2,6 @@ import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { Pool } from '@neondatabase/serverless';
 
-// Connect to your Neon database using the environment string
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 const handler = NextAuth({
@@ -18,34 +17,36 @@ const handler = NextAuth({
       if (!user.email) return false;
       
       try {
-        // Check if user exists in Neon, if not, create them
         const client = await pool.connect();
+        const cleanEmail = user.email.toLowerCase().trim();
+        
         const existingUser = await client.query(
-          'SELECT * FROM "User" WHERE email = $1', 
-          [user.email]
+          'SELECT * FROM "User" WHERE LOWER(email) = $1', 
+          [cleanEmail]
         );
 
         if (existingUser.rows.length === 0) {
           await client.query(
             'INSERT INTO "User" (email, name, "isPro") VALUES ($1, $2, false)',
-            [user.email, user.name]
+            [cleanEmail, user.name]
           );
         }
         client.release();
         return true;
       } catch (error) {
         console.error("Database error during sign in:", error);
-        return true; // Let them sign in even if DB sync fails temporarily
+        return true; 
       }
     },
     async jwt({ token }) {
-      // Fetch Pro status and expiration date from Neon
       if (token.email) {
         try {
           const client = await pool.connect();
+          const cleanEmail = token.email.toLowerCase().trim();
+          
           const result = await client.query(
-            'SELECT "isPro", "proExpiresAt" FROM "User" WHERE email = $1',
-            [token.email]
+            'SELECT "isPro", "proExpiresAt" FROM "User" WHERE LOWER(email) = $1',
+            [cleanEmail]
           );
           client.release();
 
@@ -54,9 +55,24 @@ const handler = NextAuth({
             const now = new Date();
             const expiresAt = userRecord.proExpiresAt ? new Date(userRecord.proExpiresAt) : null;
 
-            // User is truly Pro only if flagged as true AND expiration date is still in the future
+            // Check if active Pro AND expiration date is still valid
             const activePro = Boolean(userRecord.isPro && expiresAt && expiresAt > now);
-            token.isPro = activePro;
+
+            // Lazy evaluation: If database says isPro=true, but expiration has passed, downgrade immediately
+            if (userRecord.isPro && expiresAt && expiresAt <= now) {
+              const downgradeClient = await pool.connect();
+              try {
+                await downgradeClient.query(
+                  'UPDATE "User" SET "isPro" = false, "proExpiresAt" = NULL WHERE LOWER(email) = $1',
+                  [cleanEmail]
+                );
+              } finally {
+                downgradeClient.release();
+              }
+              token.isPro = false;
+            } else {
+              token.isPro = activePro;
+            }
           }
         } catch (error) {
           console.error("Error fetching pro status for JWT:", error);
@@ -65,7 +81,6 @@ const handler = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      // Expose active isPro status to the client-side useSession() hook
       if (session.user) {
         (session.user as any).isPro = token.isPro || false;
       }

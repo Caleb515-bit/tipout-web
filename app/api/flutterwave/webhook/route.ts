@@ -9,17 +9,14 @@ export async function POST(req: Request) {
     const secretHash = process.env.FLUTTERWAVE_SECRET_HASH;
     const signature = req.headers.get('verif-hash');
 
-    if (!signature || signature !== secretHash) {
-      console.warn('Unauthorized webhook attempt detected.');
-      return NextResponse.json({ status: 'error', message: 'Unauthorized' }, { status: 401 });
-    }
-console.log('Received signature:', signature);
+    console.log('Received signature:', signature ? 'Present' : 'Missing');
     console.log('Expected secret hash length:', secretHash ? secretHash.length : 'undefined');
 
     if (!signature || signature !== secretHash) {
       console.warn('Unauthorized webhook attempt detected. Signature mismatch.');
       return NextResponse.json({ status: 'error', message: 'Unauthorized' }, { status: 401 });
     }
+
     const event = await req.json();
 
     // 2. Handle successful charge event
@@ -31,7 +28,7 @@ console.log('Received signature:', signature);
         return NextResponse.json({ status: 'error', message: 'No customer email found' }, { status: 400 });
       }
 
-      // Calculate subscription duration
+      // Calculate subscription duration (Annual if >= 35 USD/NGN equivalent, otherwise Monthly)
       const expiresAt = new Date();
       if (amountPaid >= 35) {
         expiresAt.setFullYear(expiresAt.getFullYear() + 1); // Annual pass
@@ -39,7 +36,7 @@ console.log('Received signature:', signature);
         expiresAt.setMonth(expiresAt.getMonth() + 1); // Monthly pass
       }
 
-      // 3. Update Neon Database (using LOWER() to prevent case mismatch issues)
+      // 3. Update Neon Database
       const client = await pool.connect();
       try {
         const result = await client.query(
@@ -57,7 +54,7 @@ console.log('Received signature:', signature);
       }
     }
 
-    // Always return 200 OK quickly so Flutterwave knows it was received successfully
+    // Always return 200 OK so Flutterwave knows it was received successfully
     return NextResponse.json({ status: 'success' }, { status: 200 });
   } catch (err) {
     console.error('Webhook processing error:', err);
