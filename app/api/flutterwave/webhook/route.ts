@@ -5,39 +5,56 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 export async function POST(req: Request) {
   try {
-    // Automatically grabs your current Vercel domain or falls back locally
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}` 
-      : 'http://localhost:3000';
+    // 1. SECURITY CHECK: Verify the Webhook Signature (verif-hash)
+    const secretHash = process.env.FLUTTERWAVE_SECRET_HASH;
+    const signature = req.headers.get('verif-hash');
 
-    console.log(`Webhook active on: ${baseUrl}/api/flutterwave/webhook`);
+    if (!signature || signature !== secretHash) {
+      console.warn('Unauthorized webhook attempt detected.');
+      return NextResponse.json({ status: 'error', message: 'Unauthorized' }, { status: 401 });
+    }
 
     const event = await req.json();
 
+    // 2. Handle successful charge event
     if (event.event === 'charge.completed' && event.data.status === 'successful') {
-      const customerEmail = event.data.customer.email;
+      const customerEmail = event.data.customer.email?.toLowerCase().trim();
       const amountPaid = event.data.amount;
 
-      const expiresAt = new Date();
-      if (amountPaid >= 35) {
-        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-      } else {
-        expiresAt.setMonth(expiresAt.getMonth() + 1);
+      if (!customerEmail) {
+        return NextResponse.json({ status: 'error', message: 'No customer email found' }, { status: 400 });
       }
 
-      const client = await pool.connect();
-      await client.query(
-        'UPDATE "User" SET "isPro" = true, "proExpiresAt" = $1 WHERE email = $2',
-        [expiresAt, customerEmail]
-      );
-      client.release();
+      // Calculate subscription duration
+      const expiresAt = new Date();
+      if (amountPaid >= 35) {
+        expiresAt.setFullYear(expiresAt.getFullYear() + 1); // Annual pass
+      } else {
+        expiresAt.setMonth(expiresAt.getMonth() + 1); // Monthly pass
+      }
 
-      console.log(`Upgraded ${customerEmail} until ${expiresAt}`);
+      // 3. Update Neon Database (using LOWER() to prevent case mismatch issues)
+      const client = await pool.connect();
+      try {
+        const result = await client.query(
+          'UPDATE "User" SET "isPro" = true, "proExpiresAt" = $1 WHERE LOWER(email) = $2',
+          [expiresAt, customerEmail]
+        );
+        
+        if (result.rowCount === 0) {
+          console.warn(`Webhook received for email ${customerEmail}, but no user found in database.`);
+        } else {
+          console.log(`Successfully upgraded ${customerEmail} until ${expiresAt}`);
+        }
+      } finally {
+        client.release();
+      }
     }
 
+    // Always return 200 OK quickly so Flutterwave knows it was received successfully
     return NextResponse.json({ status: 'success' }, { status: 200 });
   } catch (err) {
-    console.error('Webhook error:', err);
+    console.error('Webhook processing error:', err);
     return NextResponse.json({ status: 'error', message: 'Server error' }, { status: 500 });
   }
 }
