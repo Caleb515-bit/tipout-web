@@ -83,16 +83,19 @@ export default function TipOutApp() {
   const amountToCharge = selectedPlan === 'annual' ? 39.00 : 4.99; 
   const publicKey = process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || '';
 
+  const userEmail = session?.user?.email || 'calebchidi455@gmail.com';
+  const userName = session?.user?.name || 'Augustine Caleb';
+
   const flutterwaveConfig = {
     public_key: publicKey,
     tx_ref: `tipout_${Date.now()}`,
     amount: amountToCharge,
     currency: 'USD', 
     payment_options: 'card',
-   redirect_url: `${typeof window !== 'undefined' ? window.location.origin : 'https://tipout-web.vercel.app'}/?payment=success`,
+    redirect_url: `${typeof window !== 'undefined' ? window.location.origin : 'https://tipout-web.vercel.app'}/?payment=success`,
     customer: {
-      email: session?.user?.email || 'user@tipoutapp.com',
-      name: session?.user?.name || 'TipOut User',
+      email: userEmail,
+      name: userName,
       phone_number: '',
     },
     customizations: {
@@ -109,6 +112,18 @@ export default function TipOutApp() {
     handleFlutterwavePayment({
       callback: async (response) => {
         console.log(response);
+        if (response.status === 'successful') {
+          try {
+            // Instantly ping your newly created upgrade route for immediate UI/DB sync
+            await fetch('/api/user/upgrade', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: userEmail, txRef: response.tx_ref }),
+            });
+          } catch (err) {
+            console.error('Failed instant upgrade sync:', err);
+          }
+        }
         setShowSoftCloudModal(false);
         await update(); // Refreshes session token from Neon database
         showToast('Payment successful! TipOut Pro unlocked.');
