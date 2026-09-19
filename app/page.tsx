@@ -6,7 +6,9 @@ import { signIn, useSession } from 'next-auth/react';
 import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
 
 export default function TipOutApp() {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
+  const isPro = (session?.user as any)?.isPro || false;
+
   const [currentScreen, setCurrentScreen] = useState<'home' | 'new-split' | 'breakdown' | 'roster-weights' | 'pro'>('home');
   const [currency, setCurrency] = useState('USD');
   const [currencySymbol, setCurrencySymbol] = useState('$');
@@ -64,7 +66,7 @@ export default function TipOutApp() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  // Flutterwave Config (Using USD pricing and satisfying type parameters)
+  // Flutterwave Config
   const amountToCharge = selectedPlan === 'annual' ? 39.00 : 4.99; 
   const publicKey = process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || '';
 
@@ -91,9 +93,10 @@ export default function TipOutApp() {
   const triggerCheckout = () => {
     setShowSoftCloudModal(true);
     handleFlutterwavePayment({
-      callback: (response) => {
+      callback: async (response) => {
         console.log(response);
         setShowSoftCloudModal(false);
+        await update(); // Refreshes session token from Neon database
         showToast('Payment successful! TipOut Pro unlocked.');
         setCurrentScreen('home');
         closePaymentModal();
@@ -179,7 +182,7 @@ export default function TipOutApp() {
   const handleSaveShift = () => {
     if (isSaved || !calculationResult) return;
     
-    if (savedShifts.length >= 6 && !session) {
+    if (savedShifts.length >= 6 && !isPro) {
       setCurrentScreen('pro');
       return;
     }
@@ -234,7 +237,7 @@ export default function TipOutApp() {
                 className="bg-[#C08552]/20 border border-[#C08552]/40 text-[#C08552] text-xs font-bold px-3 py-2.5 rounded-2xl flex items-center space-x-1 hover:bg-[#C08552]/30 transition"
               >
                 <Zap className="w-3.5 h-3.5 fill-[#C08552]" />
-                <span>{session ? session.user?.name?.split(' ')[0] || 'Pro' : 'Sign In'}</span>
+                <span>{isPro ? 'Pro Active' : session ? session.user?.name?.split(' ')[0] || 'Pro' : 'Sign In'}</span>
               </button>
               <button 
                 onClick={() => setCurrentScreen('roster-weights')}
@@ -287,18 +290,33 @@ export default function TipOutApp() {
             </div>
           )}
 
-          <div 
-            onClick={() => setCurrentScreen('pro')}
-            className="mt-auto border border-[#C08552]/60 rounded-3xl p-5 flex items-start space-x-4 bg-[#1D2128]/50 cursor-pointer hover:bg-[#1D2128] transition"
-          >
-            <div className="p-2.5 bg-[#C08552]/10 rounded-2xl text-[#C08552] shrink-0">
-              <ShieldCheck className="w-5 h-5" />
+          {!isPro ? (
+            <div 
+              onClick={() => setCurrentScreen('pro')}
+              className="mt-auto border border-[#C08552]/60 rounded-3xl p-5 flex items-start space-x-4 bg-[#1D2128]/50 cursor-pointer hover:bg-[#1D2128] transition"
+            >
+              <div className="p-2.5 bg-[#C08552]/10 rounded-2xl text-[#C08552] shrink-0">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-[#F2ECE4]">Upgrade to TipOut Pro</h4>
+                <p className="text-xs text-[#8B9099] mt-0.5">Unlock permanent history & unlimited roster size.</p>
+              </div>
             </div>
-            <div>
-              <h4 className="text-sm font-bold text-[#F2ECE4]">Upgrade to TipOut Pro</h4>
-              <p className="text-xs text-[#8B9099] mt-0.5">Unlock permanent history & unlimited roster size.</p>
+          ) : (
+            <div 
+              onClick={() => setCurrentScreen('pro')}
+              className="mt-auto border border-[#5FA88F]/60 rounded-3xl p-5 flex items-center space-x-4 bg-[#1D2128]/50 cursor-pointer hover:bg-[#1D2128] transition"
+            >
+              <div className="p-2.5 bg-[#5FA88F]/20 rounded-2xl text-[#5FA88F] shrink-0">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-[#F2ECE4]">TipOut Pro Active</h4>
+                <p className="text-xs text-[#8B9099] mt-0.5">All shift limits and history caps are unlocked.</p>
+              </div>
             </div>
-          </div>
+          )}
         </>
       )}
 
@@ -362,7 +380,7 @@ export default function TipOutApp() {
             
             <button 
               onClick={() => {
-                if (savedRoster.length >= 6 && !session) {
+                if (savedRoster.length >= 6 && !isPro) {
                   setCurrentScreen('pro');
                   return;
                 }
@@ -404,7 +422,7 @@ export default function TipOutApp() {
             </div>
             <div>
               <h4 className="text-xs font-bold text-[#F2ECE4]">TipOut Pro Active Limits</h4>
-              <p className="text-[11px] text-[#8B9099] mt-0.5">Free tier limited to 6 roster items.</p>
+              <p className="text-[11px] text-[#8B9099] mt-0.5">{isPro ? 'All limits currently removed.' : 'Free tier limited to 6 roster items.'}</p>
             </div>
           </div>
 
@@ -436,60 +454,73 @@ export default function TipOutApp() {
               TipOut Pro
             </span>
             <h2 className="text-3xl font-bold text-[#F2ECE4] leading-tight mb-4">
-              Unlock Unlimited Shifts
+              {isPro ? 'Pro Subscription Active' : 'Unlock Unlimited Shifts'}
             </h2>
             <p className="text-[#8B9099] text-sm leading-relaxed max-w-[280px]">
-              You have reached your free shift limit. Upgrade to Pro to unlock unlimited splits, custom role weights, and advanced reporting.
+              {isPro 
+                ? 'Your account has full access to unlimited history, roster sizes, and advanced custom role weights.' 
+                : 'You have reached your free shift limit. Upgrade to Pro to unlock unlimited splits, custom role weights, and advanced reporting.'}
             </p>
           </div>
 
-          <div className="space-y-4 px-2">
-            {/* Annual Plan Card */}
-            <div 
-              onClick={() => setSelectedPlan('annual')}
-              className={`relative bg-[#1D2128] rounded-3xl p-5 cursor-pointer transition border-[1.5px] ${
-                selectedPlan === 'annual' ? 'border-[#C08552] shadow-[0_0_20px_rgba(192,133,82,0.1)]' : 'border-[#2B303A]'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-sm font-bold text-[#F2ECE4]">Annual Pass</h3>
-                <span className="bg-[#C08552]/20 text-[#C08552] text-[10px] font-bold tracking-wider uppercase px-2 py-1 rounded-md">
-                  Save 35%
-                </span>
+          {!isPro && (
+            <div className="space-y-4 px-2">
+              {/* Annual Plan Card */}
+              <div 
+                onClick={() => setSelectedPlan('annual')}
+                className={`relative bg-[#1D2128] rounded-3xl p-5 cursor-pointer transition border-[1.5px] ${
+                  selectedPlan === 'annual' ? 'border-[#C08552] shadow-[0_0_20px_rgba(192,133,82,0.1)]' : 'border-[#2B303A]'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-sm font-bold text-[#F2ECE4]">Annual Pass</h3>
+                  <span className="bg-[#C08552]/20 text-[#C08552] text-[10px] font-bold tracking-wider uppercase px-2 py-1 rounded-md">
+                    Save 35%
+                  </span>
+                </div>
+                <div className="flex items-baseline space-x-1.5 mb-2">
+                  <span className="text-3xl font-mono font-bold text-[#5FA88F]">$39.00</span>
+                  <span className="text-[#8B9099] text-xs">/ year</span>
+                </div>
+                <p className="text-xs text-[#8B9099]">Just $3.25 / month, billed annually.</p>
               </div>
-              <div className="flex items-baseline space-x-1.5 mb-2">
-                <span className="text-3xl font-mono font-bold text-[#5FA88F]">$39.00</span>
-                <span className="text-[#8B9099] text-xs">/ year</span>
-              </div>
-              <p className="text-xs text-[#8B9099]">Just $3.25 / month, billed annually.</p>
-            </div>
 
-            {/* Monthly Plan Card */}
-            <div 
-              onClick={() => setSelectedPlan('monthly')}
-              className={`relative bg-[#1D2128] rounded-3xl p-5 cursor-pointer transition border-[1.5px] ${
-                selectedPlan === 'monthly' ? 'border-[#C08552] shadow-[0_0_20px_rgba(192,133,82,0.1)]' : 'border-[#2B303A]'
-              }`}
-            >
-              <div className="mb-1">
-                <h3 className="text-sm font-bold text-[#F2ECE4]">Monthly Pass</h3>
+              {/* Monthly Plan Card */}
+              <div 
+                onClick={() => setSelectedPlan('monthly')}
+                className={`relative bg-[#1D2128] rounded-3xl p-5 cursor-pointer transition border-[1.5px] ${
+                  selectedPlan === 'monthly' ? 'border-[#C08552] shadow-[0_0_20px_rgba(192,133,82,0.1)]' : 'border-[#2B303A]'
+                }`}
+              >
+                <div className="mb-1">
+                  <h3 className="text-sm font-bold text-[#F2ECE4]">Monthly Pass</h3>
+                </div>
+                <div className="flex items-baseline space-x-1.5 mb-2">
+                  <span className="text-3xl font-mono font-bold text-[#5FA88F]">$4.99</span>
+                  <span className="text-[#8B9099] text-xs">/ month</span>
+                </div>
+                <p className="text-xs text-[#8B9099]">Billed monthly. Cancel anytime.</p>
               </div>
-              <div className="flex items-baseline space-x-1.5 mb-2">
-                <span className="text-3xl font-mono font-bold text-[#5FA88F]">$4.99</span>
-                <span className="text-[#8B9099] text-xs">/ month</span>
-              </div>
-              <p className="text-xs text-[#8B9099]">Billed monthly. Cancel anytime.</p>
             </div>
-          </div>
+          )}
 
           <div className="fixed bottom-0 left-0 right-0 p-5 bg-[#14171C]/95 backdrop-blur-md border-t border-[#2B303A] flex justify-center z-50">
             <div className="w-full max-w-md">
-              <button 
-                onClick={triggerCheckout}
-                className="w-full bg-[#C08552] text-[#14171C] font-bold py-4 rounded-2xl shadow-lg hover:opacity-95 transition tracking-wide text-sm flex items-center justify-center cursor-pointer"
-              >
-                Continue to Payment (${selectedPlan === 'annual' ? '39.00' : '4.99'})
-              </button>
+              {!isPro ? (
+                <button 
+                  onClick={triggerCheckout}
+                  className="w-full bg-[#C08552] text-[#14171C] font-bold py-4 rounded-2xl shadow-lg hover:opacity-95 transition tracking-wide text-sm flex items-center justify-center cursor-pointer"
+                >
+                  Continue to Payment (${selectedPlan === 'annual' ? '39.00' : '4.99'})
+                </button>
+              ) : (
+                <button 
+                  onClick={() => setCurrentScreen('home')}
+                  className="w-full bg-[#5FA88F] text-[#14171C] font-bold py-4 rounded-2xl shadow-lg hover:opacity-95 transition tracking-wide text-sm flex items-center justify-center cursor-pointer"
+                >
+                  Back to Dashboard
+                </button>
+              )}
             </div>
           </div>
 
@@ -503,7 +534,6 @@ export default function TipOutApp() {
                   boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8)'
                 }}
               >
-                {/* Soft decorative glow representing calm cloud aesthetic */}
                 <div className="absolute -top-12 -right-12 w-32 h-32 bg-blue-100 rounded-full blur-2xl opacity-60 pointer-events-none"></div>
                 <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-amber-100 rounded-full blur-2xl opacity-60 pointer-events-none"></div>
 
@@ -672,7 +702,7 @@ export default function TipOutApp() {
             <label className="text-[11px] font-bold uppercase tracking-wider text-[#8B9099]">Staff on Shift ({staffList.length})</label>
             <button 
               onClick={() => { 
-                if (staffList.length >= 6 && !session) {
+                if (staffList.length >= 6 && !isPro) {
                   setCurrentScreen('pro');
                   return;
                 }
