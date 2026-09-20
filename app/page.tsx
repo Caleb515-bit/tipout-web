@@ -124,10 +124,13 @@ export default function TipOutApp() {
           }
         }
         setShowSoftCloudModal(false);
-        await update(); 
+        await update({ isPro: true }); 
         showToast('Payment successful! TipOut Pro unlocked.');
-        setCurrentScreen('home');
         closePaymentModal();
+        
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1500);
       },
       onClose: () => {
         setShowSoftCloudModal(false);
@@ -244,9 +247,11 @@ export default function TipOutApp() {
   return (
     <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-[#14171C] text-[#F2ECE4]">Loading TipOut...</div>}>
       <PaymentHandler onPaymentSuccess={async () => {
-        await update();
+        await update({ isPro: true });
         showToast('Payment successful! TipOut Pro unlocked.');
-        setCurrentScreen('home');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
       }} />
 
       <div className="flex flex-col min-h-screen p-5 bg-[#14171C] text-[#F2ECE4] font-sans max-w-md mx-auto relative pb-28">
