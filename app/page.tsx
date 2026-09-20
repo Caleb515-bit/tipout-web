@@ -798,8 +798,9 @@ export default function TipOutApp() {
                     </button>
                   </div>
                   
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex space-x-1 overflow-x-auto pb-0.5 scrollbar-none">
+                  {/* Stacked responsive layout for mobile */}
+                  <div className="space-y-3">
+                    <div className="flex space-x-1 overflow-x-auto pb-1 scrollbar-none">
                       {allRoles.map((r) => (
                         <button
                           key={r}
@@ -808,7 +809,7 @@ export default function TipOutApp() {
                             updated[idx].role = r;
                             setStaffList(updated);
                           }}
-                          className={`px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition shrink-0 ${
+                          className={`px-3 py-1.5 rounded-xl text-[11px] font-medium transition shrink-0 ${
                             staff.role === r
                               ? 'bg-[#F2ECE4] text-[#14171C] font-bold'
                               : 'bg-[#14171C] border border-[#2B303A] text-[#8B9099]'
@@ -818,18 +819,22 @@ export default function TipOutApp() {
                         </button>
                       ))}
                     </div>
-                    <div className="flex items-center space-x-1 bg-[#14171C] border border-[#2B303A] px-2.5 py-1.5 rounded-xl shrink-0">
-                      <input
-                        type="text"
-                        value={staff.hours}
-                        onChange={(e) => {
-                          const updated = [...staffList];
-                          updated[idx].hours = e.target.value;
-                          setStaffList(updated);
-                        }}
-                        className="w-5 text-center bg-transparent font-mono text-xs font-bold text-[#F2ECE4] focus:outline-none"
-                      />
-                      <span className="text-[11px] text-[#8B9099] font-mono">hrs</span>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-[#2B303A]/40">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#8B9099]">Shift Hours</span>
+                      <div className="flex items-center space-x-1 bg-[#14171C] border border-[#2B303A] px-3 py-1.5 rounded-xl">
+                        <input
+                          type="text"
+                          value={staff.hours}
+                          onChange={(e) => {
+                            const updated = [...staffList];
+                            updated[idx].hours = e.target.value;
+                            setStaffList(updated);
+                          }}
+                          className="w-8 text-center bg-transparent font-mono text-xs font-bold text-[#F2ECE4] focus:outline-none"
+                        />
+                        <span className="text-[11px] text-[#8B9099] font-mono">hrs</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -859,4 +864,4 @@ export default function TipOutApp() {
       </div>
     </Suspense>
   );
-}
+}                        
