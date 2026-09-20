@@ -57,7 +57,25 @@ export default function TipOutApp() {
     Manager: '0',
   });
 
+  // Persistent Saved Shifts via localStorage
   const [savedShifts, setSavedShifts] = useState<any[]>([]);
+
+  useEffect(() => {
+    const storedShifts = localStorage.getItem('tipout_saved_shifts');
+    if (storedShifts) {
+      try {
+        setSavedShifts(JSON.parse(storedShifts));
+      } catch (err) {
+        console.error('Failed to parse stored shifts', err);
+      }
+    }
+  }, []);
+
+  const saveShiftsToLocalStorage = (shifts: any[]) => {
+    setSavedShifts(shifts);
+    localStorage.setItem('tipout_saved_shifts', JSON.stringify(shifts));
+  };
+
   const [isSaved, setIsSaved] = useState(false);
   const [calculationResult, setCalculationResult] = useState<any>(null);
 
@@ -212,11 +230,6 @@ export default function TipOutApp() {
 
   const handleSaveShift = () => {
     if (isSaved || !calculationResult) return;
-    
-    if (savedShifts.length >= 6 && !isPro) {
-      setCurrentScreen('pro');
-      return;
-    }
 
     const newShift = {
       id: Date.now(),
@@ -225,7 +238,15 @@ export default function TipOutApp() {
       amount: `${currencySymbol}${calculationResult.totalTipPool.toFixed(2)}`,
       calculationResult
     };
-    setSavedShifts([newShift, ...savedShifts]);
+
+    let updatedShifts = [newShift, ...savedShifts];
+
+    // Enforce 6-shift limit for free tier (FIFO: drop oldest if exceeding 6)
+    if (!isPro && updatedShifts.length > 6) {
+      updatedShifts = updatedShifts.slice(0, 6);
+    }
+
+    saveShiftsToLocalStorage(updatedShifts);
     setIsSaved(true);
     showToast('Shift saved successfully!');
   };
@@ -319,7 +340,7 @@ export default function TipOutApp() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#8B9099]">Recent Shifts</h3>
               <span className="text-xs font-semibold text-[#C08552]">
-                {isPro ? 'Unlimited History' : `View All (${savedShifts.length}/6)`}
+                {isPro ? 'Unlimited Splitting' : `View All (${savedShifts.length}/6)`}
               </span>
             </div>
 
@@ -864,4 +885,4 @@ export default function TipOutApp() {
       </div>
     </Suspense>
   );
-}                        
+}
