@@ -164,6 +164,13 @@ export default function TipOutApp() {
   const handleFlutterwavePayment = useFlutterwave(flutterwaveConfig);
 
   const triggerCheckout = () => {
+    // 🛡️ Guard: Require sign in before allowing checkout
+    if (!session || !session.user) {
+      showToast('Please sign in with Google to link your Pro pass.');
+      signIn('google');
+      return;
+    }
+
     setShowSoftCloudModal(true);
     handleFlutterwavePayment({
       callback: async (response) => {
