@@ -33,17 +33,20 @@ export default function TipOutApp() {
   // Soft cloud reassurance modal state for checkout
   const [showSoftCloudModal, setShowSoftCloudModal] = useState(false);
   
-  // PWA Install Prompt State
+  // PWA Install Prompt State & Guaranteed Fallback Modal
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [showInstructionsModal, setShowInstructionsModal] = useState(false);
 
   useEffect(() => {
+    // Check if already installed or dismissed previously
+    if (!localStorage.getItem('tipout_pwa_installed')) {
+      setShowInstallBanner(true);
+    }
+
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      if (!localStorage.getItem('tipout_pwa_installed')) {
-        setShowInstallBanner(true);
-      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -54,14 +57,18 @@ export default function TipOutApp() {
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      localStorage.setItem('tipout_pwa_installed', 'true');
-      setShowInstallBanner(false);
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        localStorage.setItem('tipout_pwa_installed', 'true');
+        setShowInstallBanner(false);
+      }
+      setDeferredPrompt(null);
+    } else {
+      // Fallback: If browser blocks automated prompt, show manual instructions modal
+      setShowInstructionsModal(true);
     }
-    setDeferredPrompt(null);
   };
   
   // Pro Screen State
@@ -342,6 +349,34 @@ export default function TipOutApp() {
                 className="bg-[#C08552] text-[#14171C] font-bold text-xs px-4 py-2.5 rounded-xl shadow-md hover:opacity-95 transition"
               >
                 Install
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Manual PWA Instructions Modal (Guaranteed Fallback) */}
+        {showInstructionsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
+            <div className="w-full max-w-sm bg-[#1D2128] border border-[#2B303A] rounded-3xl p-6 text-center space-y-4 shadow-2xl">
+              <div className="w-12 h-12 mx-auto bg-[#C08552]/20 rounded-2xl flex items-center justify-center text-xl">
+                📱
+              </div>
+              <h3 className="text-base font-bold text-[#F2ECE4]">Add TipOut to Home Screen</h3>
+              <p className="text-xs text-[#8B9099] leading-relaxed">
+                To install TipOut as an app on your phone, tap your browser menu (<span className="text-[#C08552] font-bold">⋮</span>) at the top right, then select:
+              </p>
+              <div className="bg-[#14171C] border border-[#2B303A] rounded-2xl p-3 text-xs font-semibold text-[#5FA88F]">
+                &quot;Add to Home screen&quot; or &quot;Install app&quot;
+              </div>
+              <button
+                onClick={() => {
+                  setShowInstructionsModal(false);
+                  setShowInstallBanner(false);
+                  localStorage.setItem('tipout_pwa_installed', 'true');
+                }}
+                className="w-full bg-[#C08552] text-[#14171C] font-bold py-3 rounded-xl text-xs"
+              >
+                Got it
               </button>
             </div>
           </div>
