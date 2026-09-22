@@ -33,6 +33,37 @@ export default function TipOutApp() {
   // Soft cloud reassurance modal state for checkout
   const [showSoftCloudModal, setShowSoftCloudModal] = useState(false);
   
+  // PWA Install Prompt State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      if (!localStorage.getItem('tipout_pwa_installed')) {
+        setShowInstallBanner(true);
+      }
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      localStorage.setItem('tipout_pwa_installed', 'true');
+      setShowInstallBanner(false);
+    }
+    setDeferredPrompt(null);
+  };
+  
   // Pro Screen State
   const [selectedPlan, setSelectedPlan] = useState<'annual' | 'monthly'>('annual');
   
@@ -281,6 +312,38 @@ export default function TipOutApp() {
           <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-[#5FA88F] text-[#14171C] font-bold text-xs px-4 py-3 rounded-2xl shadow-xl flex items-center space-x-2">
             <CheckCircle2 className="w-4 h-4" />
             <span>{toastMessage}</span>
+          </div>
+        )}
+
+        {/* PWA Install Banner */}
+        {showInstallBanner && (
+          <div className="fixed bottom-24 left-5 right-5 z-50 bg-[#1D2128] border border-[#C08552]/40 rounded-3xl p-4 shadow-2xl flex items-center justify-between animate-in slide-in-from-bottom-5 duration-300">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-[#C08552]/20 rounded-2xl flex items-center justify-center text-lg shrink-0">
+                📱
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-[#F2ECE4]">Install TipOut App</h4>
+                <p className="text-[11px] text-[#8B9099]">Add to home screen for instant shift splitting.</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  setShowInstallBanner(false);
+                  localStorage.setItem('tipout_pwa_installed', 'true');
+                }}
+                className="text-xs text-[#8B9099] px-2 py-1"
+              >
+                Later
+              </button>
+              <button
+                onClick={handleInstallClick}
+                className="bg-[#C08552] text-[#14171C] font-bold text-xs px-4 py-2.5 rounded-xl shadow-md hover:opacity-95 transition"
+              >
+                Install
+              </button>
+            </div>
           </div>
         )}
 
