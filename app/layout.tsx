@@ -16,7 +16,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://tipout-web.vercel.app'), // Update to your custom domain later (e.g., https://tipout.org)
+  metadataBase: new URL('https://tipout.org'), 
   title: {
     default: "TipOut — Fast & Accurate Tip Splitting for Hospitality Workers",
     template: "%s | TipOut"
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://tipout-web.vercel.app",
+    url: "https://tipout.org",
     title: "TipOut — Smart Tip Splitting for Hospitality Workers",
     description: "Calculate and split shift tips fairly by hours and custom role weights. Save closing tickets and generate instant receipt images.",
     siteName: "TipOut",
@@ -75,8 +75,30 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // 🔍 Structured JSON-LD Schema for Search Engine Bots (Google / Bing)
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'TipOut',
+    operatingSystem: 'All',
+    applicationCategory: 'BusinessApplication',
+    description: 'Fast and accurate tip-splitting web application for hospitality workers and servers.',
+    offers: {
+      '@type': 'Offer',
+      price: '0.00',
+      priceCurrency: 'USD',
+    },
+  };
+
   return (
     <html lang="en" className={`${spaceGrotesk.variable} ${jetbrainsMono.variable}`}>
+      <head>
+        {/* Inject JSON-LD Structured Data for Bot Recognition */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className="bg-background text-text-primary font-sans antialiased selection:bg-accent selection:text-background min-h-screen flex justify-center">
         <SessionProviderWrapper>
           <div className="w-full max-w-md bg-background min-h-screen shadow-2xl flex flex-col relative border-x border-border">
